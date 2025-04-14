@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Mapa polski</title>
+
+        <!-- LEAFLET LINK -->
+        <link rel="stylesheet" href="leaflet_custom/leaflet.css" />
+        <script src="leaflet_custom/leaflet.ajax.min.js"></script>
+        <script src="leaflet_custom/leaflet.js"></script>
+
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div id="reset-button">Resetuj widok</div>
+
+        <div id="search-container" style="margin: 10px">
+            <input
+                type="text"
+                id="cityInput"
+                placeholder="Wpisz nazwe miasta"
+            />
+            <button id="citySearchButton">Wyszukaj</button>
+        </div>
+        <div id="map"></div>
+
+        <script>
+            // MAPA
+            const map = L.map("map", {
+                center: [52.1, 19.3],
+                zoom: 7,
+                scrollWheelZoom: false,
+                dragging: false,
+                doubleClickZoom: false,
+            });
+
+            L.tileLayer(
+                "https://api.mapbox.com/styles/v1/free-azerbejdzan/cm7vyzkjy01ij01s2hw4qfauo/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZnJlZS1hemVyYmVqZHphbiIsImEiOiJjbTd2eXhqeW8wMDNjMmpzNW93eGVjYWc4In0.hhpL6uPuGyi8sel1SA-bJQ",
+                {
+                    scrollWheelZoom: false,
+                    dragging: false,
+                    doubleClickZoom: false,
+                }
+            ).addTo(map);
+
+            let geoJsonLayer;
+            let cityMarkers = [];
+
+            const customIcon = L.icon({
+                iconUrl: "files/marker-icon-shadow.png",
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+
+            // GEOJSON POLSKI
+            fetch("files/wojewodztwa-medium.geojson")
+                .then((response) => response.json())
+                .then((data) => {
+                    geoJsonLayer = L.geoJSON(data, {
+                        style: {
+                            color: "#f5592f",
+                            weight: 2,
+                            fillColor: "#f5592f",
+                            fillOpacity: 0.1,
+                        },
+                        onEachFeature: function (feature, layer) {
+                            layer.isHidden = false;
+                            layer.isSelected = false;
+
+                            layer.on({
+                                mouseover: function (e) {
+                                    if (this.isHidden || this.isSelected)
+                                        return;
+                                    this.setStyle({
+                                        weight: 4,
+                                        color: "#f9f5e5",
+                                        fillOpacity: 0.3,
+                                    });
+                                    this.bringToFront();
+                                },
+                                mouseout: function (e) {
+                                    if (this.isHidden || this.isSelected)
+                                        return;
+                                    this.setStyle({
+                                        weight: 2,
+                                        color: "#f5592f",
+                                        fillOpacity: 0.1,
+                                    });
+                                    this.bringToBack();
+                                },
+                                click: function (e) {
+                                    if (this.isHidden) return;
+
+                                    geoJsonLayer.eachLayer(function (
+                                        otherLayer
+                                    ) {
+                                        if (otherLayer.isSelected) {
+                                            otherLayer.isSelected = false;
+                                            otherLayer.setStyle({
+                                                weight: 2,
+                                                color: "#f5592f",
+                                                fillOpacity: 0.1,
+                                            });
+                                        }
+                                    });
+
+                                    this.isSelected = true;
+                                    this.setStyle({
+                                        weight: 4,
+                                        color: "#f9f5e5",
+                                        fillOpacity: 0.2,
+                                    });
+
+                                    map.fitBounds(this.getBounds());
+
+                                    fetchCitiesFromDB(
+                                        feature.properties.adminCode1
+                                    );
+
+                                    geoJsonLayer.eachLayer(
+                                        function (otherLayer) {
+                                            if (otherLayer !== this) {
+                                                otherLayer.setStyle({
+                                                    fillOpacity: 0,
+                                                    weight: 0,
+                                                });
+                                                otherLayer.isHidden = true;
+                                            }
+                                        }.bind(this)
+                                    );
+                                },
+                            });
+                        },
+                    }).addTo(map);
+                });
+            // RESET BUTTON
+            document
+                .getElementById("reset-button")
+                .addEventListener("click", () => {
+                    map.setView([52.1, 19.3], 7);
+                    if (geoJsonLayer) {
+                        geoJsonLayer.eachLayer(function (layer) {
+                            layer.setStyle({
+                                color: "#f5592f",
+                                weight: 2,
+                                fillColor: "#f5592f",
+                                fillOpacity: 0.1,
+                            });
+                            layer.isHidden = false;
+                            layer.isSelected = false;
+                        });
+                    }
+                    cityMarkers.forEach((marker) => map.removeLayer(marker));
+                    cityMarkers = [];
+                });
+            // API
+            function fetchCitiesFromDB(adminCode) {
+                const url = `http://localhost:3000/cities?adminCode=${encodeURIComponent(
+                    adminCode
+                )}`;
+
+                fetch(url)
+                    .then((response) => {
+                        if (!response.ok) throw new Error("Server error");
+                        return response.json();
+                    })
+                    .then((cities) => {
+                        cityMarkers.forEach((marker) =>
+                            map.removeLayer(marker)
+                        );
+                        cityMarkers = [];
+
+                        cities.forEach((city) => {
+                            const marker = L.marker([city.lat, city.lng], {
+                                icon: customIcon,
+                            }).addTo(map);
+                            marker.bindPopup(
+                                `<b>${city.name}</b><br>${
+                                    city.adminName1 || ""
+                                }`
+                            );
+                            cityMarkers.push(marker);
+                        });
+                        console.log(
+                            `Loaded ${cities.length} cities from DB for adminCode ${adminCode}`
+                        );
+                    })
+                    .catch((error) => console.error("Error:", error));
+            }
+
+            // WYSZUKIWANIE
+            function searchCityByName() {
+                const cityName = document
+                    .getElementById("cityInput")
+                    .value.trim();
+                if (!cityName) return;
+
+                const url = `http://localhost:3000/searchCity?name=${encodeURIComponent(
+                    cityName
+                )}`;
+
+                fetch(url)
+                    .then((response) => {
+                        if (!response.ok) throw new Error("Server error");
+                        return response.json();
+                    })
+                    .then((data) => {
+                        cityMarkers.forEach((marker) =>
+                            map.removeLayer(marker)
+                        );
+                        cityMarkers = [];
+
+                        if (data.length === 0) {
+                            console.log("No city found with that name");
+                            return;
+                        }
+                        data.forEach((city) => {
+                            const marker = L.marker([city.lat, city.lng], {
+                                icon: customIcon,
+                            }).addTo(map);
+                            marker.bindPopup(
+                                `<b>${city.name}</b><br>${
+                                    city.adminName1 || ""
+                                }`
+                            );
+                            cityMarkers.push(marker);
+                        });
+                        const firstCity = data[0];
+                        map.setView([firstCity.lat, firstCity.lng], 10);
+                    })
+                    .catch((error) => console.error("Error:", error));
+            }
+
+            document
+                .getElementById("citySearchButton")
+                .addEventListener("click", searchCityByName);
+            document
+                .getElementById("cityInput")
+                .addEventListener("keypress", function (e) {
+                    if (e.key === "Enter") {
+                        searchCityByName();
+                    }
+                });
+        </script>
+    </body>
+</html>

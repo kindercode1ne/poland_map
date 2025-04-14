@@ -1,0 +1,78 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* przycisk do resetowania */
+#reset-button {
+  background-color: #f5592f;
+  box-shadow: 0 4px 8px #4e200a33;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #f9f5e5;
+  font-family: Arial;
+  font-size: 17px;
+  padding: 15px 30px;
+  display: inline-block;
+  transition: background-color 0.3s ease;
+
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+  z-index: 1000;
+}
+#reset-button:hover {
+  background-color: #c5411c;
+}
+
+/* mapa i chowanie */
+#map {
+  height: 100%;
+  width: 100%;
+  background-color: #161616;
+}
+.hidden {
+  display: none;
+  cursor: default;
+}
+/* wyszukiwarka */
+#search-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+#cityInput {
+  background-color: #f9f5e5;
+  color: #161616;
+  font-family: Arial;
+  font-size: 17px;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  outline: none;
+}
+
+#citySearchButton {
+  background-color: #f5592f;
+  box-shadow: 0 4px 8px #4e200a33;
+  border-radius: 0 8px 8px 0;
+  color: #f9f5e5;
+  font-family: Arial;
+  font-size: 17px;
+  padding: 15px 30px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border: none;
+  outline: none;
+}
+
+#citySearchButton:hover {
+  background-color: #c5411c;
+}
