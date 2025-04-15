@@ -8,7 +8,7 @@ usage:
 2. create the sql database
 3. run the server.js with node
 4. run the html
-All done! swag
+5. All done! swag
 
 
 ## Authors
